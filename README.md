@@ -45,7 +45,14 @@ One endpoint for all AI providers · 40+ providers · 100+ models · ~3-17ms API
 ### Cách 1: Script tự động (khuyến nghị)
 
 ```bash
+# Full (server + UI monolith)
 curl -fsSL https://raw.githubusercontent.com/davidduoan89/9routerS/clean-main/install.sh | bash
+
+# Server only (cho VPS/Coolify)
+curl -fsSL https://raw.githubusercontent.com/davidduoan89/9routerS/clean-main/install.sh | bash -s -- --server
+
+# UI only (cho Vercel local dev)
+NEXT_PUBLIC_API_URL=https://your-server.com curl -fsSL .../install.sh | bash -s -- --ui
 ```
 
 ### Cách 2: Thủ công
@@ -86,41 +93,96 @@ PORT=20128 HOSTNAME=0.0.0.0 npm run start
 
 ### Cách 5: Split Deployment — Server (Coolify/DigitalOcean) + UI (Vercel)
 
-Tách server API và dashboard UI riêng biệt để tối ưu hiệu suất:
+Tách server API và dashboard UI thành 2 service riêng biệt:
 
-**Server (DigitalOcean/Coolify):**
+```
+┌─────────────────────────┐      ┌──────────────────────────┐
+│   Server (DigitalOcean)  │      │      UI (Vercel)         │
+│   Coolify / Docker       │      │      Free hosting        │
+│                          │      │                          │
+│   /v1/*  LLM proxy       │◄─────│  Dashboard pages         │
+│   /api/* management      │      │  fetch() proxied qua     │
+│   open-sse engine        │      │  Vercel rewrites         │
+│   SQLite DB              │      │  CDN edge delivery       │
+│   MITM proxy             │      │                          │
+│   ~80MB RAM              │      │  $0/month                │
+└─────────────────────────┘      └──────────────────────────┘
+```
+
+#### 5a. Server — DigitalOcean + Coolify (Docker)
 
 ```bash
-# Sử dụng Dockerfile.server
+# Build image
 docker build -f Dockerfile.server -t 9routers-server .
 
+# Run server
 docker run -d \
   --name 9routers-server \
   -p 20128:20128 \
   -e ALLOWED_ORIGINS="https://your-ui.vercel.app" \
   -e AUTH_COOKIE_SECURE=true \
-  -v 9routers-data:/root/.9router \
+  -v 9routers-data:/app/data \
   --restart unless-stopped \
   9routers-server
 ```
 
-**UI (Vercel):**
+Hoặc **không dùng Docker** (trực tiếp trên VPS):
 
-1. Fork/import repo vào Vercel
-2. Set environment variable:
-   - `NEXT_PUBLIC_API_URL` = `https://your-server.example.com` (URL server API)
-3. Deploy — Vercel tự proxy `/api/*` requests đến server
+```bash
+# Clone + install
+git clone -b clean-main https://github.com/davidduoan89/9routerS.git
+cd 9routerS && npm install
 
-```
-Server (DigitalOcean)          Vercel (UI)
-├── /v1/* LLM proxy            ├── Dashboard pages
-├── /api/* management    ◄──── ├── fetch() → proxied qua Vercel rewrites
-├── open-sse engine            └── $0 hosting, CDN edge
-├── SQLite DB
-└── ~80MB RAM
+# Build + run server
+npm run build
+ALLOWED_ORIGINS="https://your-ui.vercel.app" PORT=20128 npm run start
 ```
 
-> **Lưu ý**: Nếu không set `NEXT_PUBLIC_API_URL`, app chạy như monolith bình thường (backward compatible).
+**Environment variables cho Server:**
+
+| Biến | Giá trị | Mô tả |
+|---|---|---|
+| `PORT` | `20128` | Port API server |
+| `ALLOWED_ORIGINS` | `https://your-ui.vercel.app` | Cho phép UI cross-origin (phân cách bằng dấu `,`) |
+| `AUTH_COOKIE_SECURE` | `true` | Bắt buộc khi dùng HTTPS |
+| `DATA_DIR` | `/app/data` | Thư mục lưu SQLite + config |
+
+#### 5b. UI — Vercel (Free)
+
+**Cách 1: Deploy trực tiếp từ GitHub**
+
+1. Vào [vercel.com](https://vercel.com) → New Project → Import `davidduoan89/9routerS`
+2. Trong **Environment Variables**, thêm:
+   - `API_URL` = `https://your-server.example.com` (chỉ server-side, cho rewrites proxy)
+3. Click **Deploy** — Vercel tự detect Next.js và build
+
+**Cách 2: Local dev (UI tách biệt)**
+
+```bash
+git clone -b clean-main https://github.com/davidduoan89/9routerS.git
+cd 9routerS && npm install
+
+# Đổi config sang UI mode
+cp next.config.ui.mjs next.config.mjs
+
+# Chạy UI dev với API trỏ đến server
+API_URL=https://your-server.com npx next dev -p 3000 --webpack
+```
+
+**Cách hoạt động:**
+- `next.config.ui.mjs` chứa rewrites rule: `/api/*` → `${API_URL}/api/*`
+- Browser gọi `/api/providers` → Vercel/Next.js proxy đến server → trả kết quả
+- Không cần CORS (same-origin từ góc browser)
+- Cookie auth hoạt động bình thường qua proxy
+
+**Environment variables cho UI:**
+
+| Biến | Mô tả |
+|---|---|
+| `API_URL` | URL server API (server-side only, dùng cho rewrites proxy). **Khuyến nghị** |
+| `NEXT_PUBLIC_API_URL` | Giống API_URL nhưng exposed ra client JS. Chỉ cần khi muốn browser gọi thẳng server (cần CORS) |
+
+> **Backward compatible**: Nếu không set `NEXT_PUBLIC_API_URL`, app chạy như monolith bình thường.
 
 ---
 

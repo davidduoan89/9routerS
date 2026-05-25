@@ -1,13 +1,18 @@
 /**
  * Next.js config for UI-only deployment (Vercel).
- * 
- * Serves only the dashboard — API requests are proxied to NEXT_PUBLIC_API_URL
- * via Vercel rewrites (see vercel.json), so no CORS issues.
- * 
- * Usage:
- *   1. Set NEXT_PUBLIC_API_URL env var in Vercel to your server URL
- *      e.g. https://9router.your-domain.com
- *   2. Deploy to Vercel — it auto-detects Next.js
+ *
+ * API requests are proxied to the server via Next.js rewrites.
+ * This avoids CORS issues — browser sees same-origin requests.
+ *
+ * Env vars:
+ *   API_URL — Server URL for rewrites proxy (server-side only, recommended)
+ *             e.g. https://9router.your-domain.com
+ *
+ *   NEXT_PUBLIC_API_URL — Same as API_URL but also exposed to client JS.
+ *             Only needed if you want the browser to call the server directly
+ *             (requires CORS + ALLOWED_ORIGINS on server).
+ *
+ * Recommended: Use API_URL only — rewrites handle everything, no CORS needed.
  */
 
 /** @type {import('next').NextConfig} */
@@ -15,7 +20,6 @@ const nextConfig = {
   compress: true,
   poweredByHeader: false,
   reactStrictMode: false,
-  // recharts is already lazy-loaded via React.lazy(); no modularizeImports needed.
   images: {
     unoptimized: true,
   },
@@ -35,12 +39,10 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+    const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
     if (!apiUrl) return [];
     return [
-      // Proxy /api/* to server (avoids CORS)
       { source: "/api/:path*", destination: `${apiUrl}/api/:path*` },
-      // Proxy /v1/* LLM endpoints
       { source: "/v1/:path*", destination: `${apiUrl}/v1/:path*` },
     ];
   },
