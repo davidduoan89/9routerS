@@ -9,6 +9,7 @@ import { Card, Button, Badge, Input, Modal, CardSkeleton, OAuthModal, KiroOAuthW
 import { OAUTH_PROVIDERS, APIKEY_PROVIDERS, FREE_PROVIDERS, getProviderAlias, isOpenAICompatibleProvider, isAnthropicCompatibleProvider } from "@/shared/constants/providers";
 import { getModelsByProviderId } from "@/shared/constants/models";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function ProviderDetailPage() {
   const params = useParams();
@@ -75,7 +76,7 @@ export default function ProviderDetailPage() {
   // Define callbacks BEFORE the useEffect that uses them
   const fetchAliases = useCallback(async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) {
         setModelAliases(data.aliases || {});
@@ -88,8 +89,8 @@ export default function ProviderDetailPage() {
   const fetchConnections = useCallback(async () => {
     try {
       const [connectionsRes, nodesRes] = await Promise.all([
-        fetch("/api/providers", { cache: "no-store" }),
-        fetch("/api/provider-nodes", { cache: "no-store" }),
+        apiFetch("/api/providers", { cache: "no-store" }),
+        apiFetch("/api/provider-nodes", { cache: "no-store" }),
       ]);
       const connectionsData = await connectionsRes.json();
       const nodesData = await nodesRes.json();
@@ -105,7 +106,7 @@ export default function ProviderDetailPage() {
         if (!node && isCompatible) {
           for (let attempt = 0; attempt < 3; attempt += 1) {
             await new Promise((resolve) => setTimeout(resolve, 150));
-            const retryRes = await fetch("/api/provider-nodes", { cache: "no-store" });
+            const retryRes = await apiFetch("/api/provider-nodes", { cache: "no-store" });
             if (!retryRes.ok) continue;
             const retryData = await retryRes.json();
             node = (retryData.nodes || []).find((entry) => entry.id === providerId) || null;
@@ -124,7 +125,7 @@ export default function ProviderDetailPage() {
 
   const handleUpdateNode = async (formData) => {
     try {
-      const res = await fetch(`/api/provider-nodes/${providerId}`, {
+      const res = await apiFetch(`/api/provider-nodes/${providerId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -152,7 +153,7 @@ export default function ProviderDetailPage() {
     if (!activeConnection || savingSelectedModels) return;
     setSavingSelectedModels(true);
     try {
-      const res = await fetch(`/api/providers/${activeConnection.id}`, {
+      const res = await apiFetch(`/api/providers/${activeConnection.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -216,7 +217,7 @@ export default function ProviderDetailPage() {
 
     setLoadingRemoteModels(true);
     try {
-      const res = await fetch(`/api/providers/${activeConnection.id}/models`);
+      const res = await apiFetch(`/api/providers/${activeConnection.id}/models`);
       const data = await res.json();
       if (!res.ok) {
         setRemoteModels([]);
@@ -252,7 +253,7 @@ export default function ProviderDetailPage() {
   const handleSetAlias = async (modelId, alias, providerAliasOverride = providerAlias) => {
     const fullModel = `${providerAliasOverride}/${modelId}`;
     try {
-      const res = await fetch("/api/models/alias", {
+      const res = await apiFetch("/api/models/alias", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: fullModel, alias }),
@@ -270,7 +271,7 @@ export default function ProviderDetailPage() {
 
   const handleDeleteAlias = async (alias) => {
     try {
-      const res = await fetch(`/api/models/alias?alias=${encodeURIComponent(alias)}`, {
+      const res = await apiFetch(`/api/models/alias?alias=${encodeURIComponent(alias)}`, {
         method: "DELETE",
       });
       if (res.ok) {
@@ -284,7 +285,7 @@ export default function ProviderDetailPage() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this connection?")) return;
     try {
-      const res = await fetch(`/api/providers/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/providers/${id}`, { method: "DELETE" });
       if (res.ok) {
         setConnections(connections.filter(c => c.id !== id));
       }
@@ -300,7 +301,7 @@ export default function ProviderDetailPage() {
 
   const handleSaveApiKey = async (formData) => {
     try {
-      const res = await fetch("/api/providers", {
+      const res = await apiFetch("/api/providers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: providerId, ...formData }),
@@ -316,7 +317,7 @@ export default function ProviderDetailPage() {
 
   const handleUpdateConnection = async (formData) => {
     try {
-      const res = await fetch(`/api/providers/${selectedConnection.id}`, {
+      const res = await apiFetch(`/api/providers/${selectedConnection.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -332,7 +333,7 @@ export default function ProviderDetailPage() {
 
   const handleUpdateConnectionStatus = async (id, isActive) => {
     try {
-      const res = await fetch(`/api/providers/${id}`, {
+      const res = await apiFetch(`/api/providers/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive }),
@@ -365,12 +366,12 @@ export default function ProviderDetailPage() {
       }
 
       await Promise.all([
-        fetch(`/api/providers/${conn1.id}`, {
+        apiFetch(`/api/providers/${conn1.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ priority: p1 }),
         }),
-        fetch(`/api/providers/${conn2.id}`, {
+        apiFetch(`/api/providers/${conn2.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ priority: p2 }),
@@ -600,7 +601,7 @@ export default function ProviderDetailPage() {
                 onClick={async () => {
                   if (!confirm(`Delete this ${isAnthropicCompatible ? "Anthropic" : "OpenAI"} Compatible node?`)) return;
                   try {
-                    const res = await fetch(`/api/provider-nodes/${providerId}`, { method: "DELETE" });
+                    const res = await apiFetch(`/api/provider-nodes/${providerId}`, { method: "DELETE" });
                     if (res.ok) {
                       router.push("/dashboard/providers");
                     }
@@ -967,7 +968,7 @@ function CompatibleModelsSection({ providerStorageAlias, providerDisplayAlias, m
 
     setImporting(true);
     try {
-      const res = await fetch(`/api/providers/${activeConnection.id}/models`);
+      const res = await apiFetch(`/api/providers/${activeConnection.id}/models`);
       const data = await res.json();
       if (!res.ok) {
         alert(data.error || "Failed to import models");
@@ -1246,7 +1247,7 @@ function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthro
   const handleValidate = async () => {
     setValidating(true);
     try {
-      const res = await fetch("/api/providers/validate", {
+      const res = await apiFetch("/api/providers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider, apiKey: formData.apiKey }),
@@ -1269,7 +1270,7 @@ function AddApiKeyModal({ isOpen, provider, providerName, isCompatible, isAnthro
       try {
         setValidating(true);
         setValidationResult(null);
-        const res = await fetch("/api/providers/validate", {
+        const res = await apiFetch("/api/providers/validate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ provider, apiKey: formData.apiKey }),
@@ -1390,7 +1391,7 @@ function EditConnectionModal({ isOpen, connection, onSave, onClose }) {
     setTesting(true);
     setTestResult(null);
     try {
-      const res = await fetch(`/api/providers/${connection.id}/test`, { method: "POST" });
+      const res = await apiFetch(`/api/providers/${connection.id}/test`, { method: "POST" });
       const data = await res.json();
       setTestResult(data.valid ? "success" : "failed");
     } catch {
@@ -1405,7 +1406,7 @@ function EditConnectionModal({ isOpen, connection, onSave, onClose }) {
     setValidating(true);
     setValidationResult(null);
     try {
-      const res = await fetch("/api/providers/validate", {
+      const res = await apiFetch("/api/providers/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ provider: connection.provider, apiKey: formData.apiKey }),
@@ -1430,7 +1431,7 @@ function EditConnectionModal({ isOpen, connection, onSave, onClose }) {
           try {
             setValidating(true);
             setValidationResult(null);
-            const res = await fetch("/api/providers/validate", {
+            const res = await apiFetch("/api/providers/validate", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ provider: connection.provider, apiKey: formData.apiKey }),
@@ -1594,7 +1595,7 @@ function EditCompatibleNodeModal({ isOpen, node, onSave, onClose, isAnthropic })
   const handleValidate = async () => {
     setValidating(true);
     try {
-      const res = await fetch("/api/provider-nodes/validate", {
+      const res = await apiFetch("/api/provider-nodes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

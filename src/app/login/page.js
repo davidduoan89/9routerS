@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, Button, Input } from "@/shared/components";
 import { useRouter } from "next/navigation";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -26,10 +27,8 @@ export default function LoginPage() {
     async function checkAuth() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
-
       try {
-        const res = await fetch(`${baseUrl}/api/auth/status`, {
+        const res = await apiFetch("/api/auth/status", {
           signal: controller.signal,
         });
         clearTimeout(timeoutId);
@@ -63,7 +62,7 @@ export default function LoginPage() {
     setResetHint("");
 
     try {
-      const res = await fetch("/api/auth/login", {
+      const res = await apiFetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),

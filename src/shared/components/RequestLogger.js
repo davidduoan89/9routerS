@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Card from "./Card";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function RequestLogger() {
   const [logs, setLogs] = useState([]);
@@ -25,7 +26,7 @@ export default function RequestLogger() {
   const fetchLogs = async (showLoading = true) => {
     if (showLoading) setLoading(true);
     try {
-      const res = await fetch("/api/usage/request-logs");
+      const res = await apiFetch("/api/usage/request-logs");
       if (res.ok) {
         const data = await res.json();
         setLogs(data);

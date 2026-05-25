@@ -10,6 +10,7 @@ import { MEDIA_PROVIDER_KINDS } from "@/shared/constants/providers";
 import { useCopyToClipboard } from "@/shared/hooks/useCopyToClipboard";
 import Button from "./Button";
 import { ConfirmModal } from "./Modal";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const VISIBLE_MEDIA_KINDS = ["embedding", "image", "tts", "stt"];
 const COMBINED_WEB_ITEM = { id: "web", label: "Web Fetch & Search", icon: "travel_explore", href: "/dashboard/media-providers/web" };
@@ -50,14 +51,14 @@ export default function Sidebar({ onClose }) {
   const INSTALL_CMD = UPDATER_CONFIG.installCmdLatest;
 
   useEffect(() => {
-    fetch("/api/settings")
+    apiFetch("/api/settings")
       .then(res => res.json())
       .then(data => { if (data.enableTranslator) setEnableTranslator(true); })
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch("/api/version")
+    apiFetch("/api/version")
       .then(res => res.json())
       .then(data => { if (data.hasUpdate) setUpdateInfo(data); })
       .catch(() => {});
@@ -85,7 +86,7 @@ export default function Sidebar({ onClose }) {
       setShutdownCountdown(remaining);
       if (remaining <= 0) {
         clearInterval(timer);
-        fetch("/api/version/shutdown", { method: "POST" }).catch(() => {});
+        apiFetch("/api/version/shutdown", { method: "POST" }).catch(() => {});
         setIsDisconnected(true);
       }
     }, 1000);
@@ -99,7 +100,7 @@ export default function Sidebar({ onClose }) {
   const handleShutdown = async () => {
     setIsShuttingDown(true);
     try {
-      await fetch("/api/version/shutdown", { method: "POST" });
+      await apiFetch("/api/version/shutdown", { method: "POST" });
     } catch (e) {
       // Expected to fail as server shuts down
     }

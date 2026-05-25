@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
 
@@ -70,7 +71,7 @@ export default function ClaudeToolCard({
   }, [isExpanded]);
 
   useEffect(() => {
-    fetch("/api/settings").then(r => r.json()).then(data => {
+    apiFetch("/api/settings").then(r => r.json()).then(data => {
       setCcFilterNaming(!!data.ccFilterNaming);
     }).catch(() => {});
   }, []);
@@ -78,7 +79,7 @@ export default function ClaudeToolCard({
   const handleCcFilterNamingToggle = async (e) => {
     const value = e.target.checked;
     setCcFilterNaming(value);
-    await fetch("/api/settings", {
+    await apiFetch("/api/settings", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ccFilterNaming: value }),
@@ -87,7 +88,7 @@ export default function ClaudeToolCard({
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
@@ -120,7 +121,7 @@ export default function ClaudeToolCard({
   const checkClaudeStatus = async () => {
     setCheckingClaude(true);
     try {
-      const res = await fetch("/api/cli-tools/claude-settings");
+      const res = await apiFetch("/api/cli-tools/claude-settings");
       const data = await res.json();
       setClaudeStatus(data);
     } catch (error) {
@@ -159,7 +160,7 @@ export default function ClaudeToolCard({
         const targetModel = modelMappings[model.alias];
         if (targetModel && model.envKey) env[model.envKey] = targetModel;
       });
-      const res = await fetch("/api/cli-tools/claude-settings", {
+      const res = await apiFetch("/api/cli-tools/claude-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ env }),
@@ -182,7 +183,7 @@ export default function ClaudeToolCard({
     setRestoring(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cli-tools/claude-settings", { method: "DELETE" });
+      const res = await apiFetch("/api/cli-tools/claude-settings", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings reset successfully!" });

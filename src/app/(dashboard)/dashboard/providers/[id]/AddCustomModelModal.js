@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Button, Modal } from "@/shared/components";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function AddCustomModelModal({ isOpen, providerAlias, providerDisplayAlias, onSave, onClose }) {
   const [modelId, setModelId] = useState("");
@@ -27,7 +28,7 @@ export default function AddCustomModelModal({ isOpen, providerAlias, providerDis
     setTestStatus("testing");
     setTestError("");
     try {
-      const res = await fetch("/api/models/test", {
+      const res = await apiFetch("/api/models/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model: `${providerAlias}/${cleanId}` }),

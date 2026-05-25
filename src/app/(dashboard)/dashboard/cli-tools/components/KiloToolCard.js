@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function KiloToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus, tunnelEnabled, tunnelPublicUrl, tailscaleEnabled, tailscaleUrl }) {
   const [status, setStatus] = useState(initialStatus || null);
@@ -39,7 +40,7 @@ export default function KiloToolCard({ tool, isExpanded, onToggle, baseUrl, apiK
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
@@ -64,7 +65,7 @@ export default function KiloToolCard({ tool, isExpanded, onToggle, baseUrl, apiK
   const checkStatus = async () => {
     setChecking(true);
     try {
-      const res = await fetch("/api/cli-tools/kilo-settings");
+      const res = await apiFetch("/api/cli-tools/kilo-settings");
       const data = await res.json();
       setStatus(data);
     } catch (error) {
@@ -82,7 +83,7 @@ export default function KiloToolCard({ tool, isExpanded, onToggle, baseUrl, apiK
         ? selectedApiKey
         : (!cloudEnabled ? "sk_9router" : selectedApiKey);
 
-      const res = await fetch("/api/cli-tools/kilo-settings", {
+      const res = await apiFetch("/api/cli-tools/kilo-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseUrl: getEffectiveBaseUrl(), apiKey: keyToUse, model: selectedModel }),
@@ -105,7 +106,7 @@ export default function KiloToolCard({ tool, isExpanded, onToggle, baseUrl, apiK
     setRestoring(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cli-tools/kilo-settings", { method: "DELETE" });
+      const res = await apiFetch("/api/cli-tools/kilo-settings", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings reset successfully!" });

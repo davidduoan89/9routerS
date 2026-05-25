@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Card, Badge, Button, Toggle, AddCustomEmbeddingModal } from "@/shared/components";
 import ProviderIcon from "@/shared/components/ProviderIcon";
 import { MEDIA_PROVIDER_KINDS, AI_PROVIDERS, getProvidersByKind } from "@/shared/constants/providers";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 // Kinds that support combos (currently disabled for image/tts — temporarily hidden).
 // webSearch/webFetch handled by /web page.
@@ -158,18 +159,18 @@ export default function MediaProviderKindPage() {
 
   useEffect(() => {
     if (!kindConfig) return;
-    fetch("/api/providers", { cache: "no-store" })
+    apiFetch("/api/providers", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => setConnections(d.connections || []))
       .catch(() => {});
     if (isEmbedding) {
-      fetch("/api/provider-nodes", { cache: "no-store" })
+      apiFetch("/api/provider-nodes", { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => setCustomNodes((d.nodes || []).filter((n) => n.type === "custom-embedding")))
         .catch(() => {});
     }
     if (supportsCombo) {
-      fetch("/api/combos", { cache: "no-store" })
+      apiFetch("/api/combos", { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => setCombos(d.combos || []))
         .catch(() => {});
@@ -198,7 +199,7 @@ export default function MediaProviderKindPage() {
     );
     await Promise.allSettled(
       providerConns.map((c) =>
-        fetch(`/api/providers/${c.id}`, {
+        apiFetch(`/api/providers/${c.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: newActive }),
@@ -213,7 +214,7 @@ export default function MediaProviderKindPage() {
     let i = 1;
     const existing = new Set(combos.map((c) => c.name));
     while (existing.has(name)) { name = `${base}-${i++}`; }
-    const res = await fetch("/api/combos", {
+    const res = await apiFetch("/api/combos", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, models: [], kind }),

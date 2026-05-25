@@ -8,6 +8,7 @@ import { parseQuotaData, calculatePercentage } from "./utils";
 import Card from "@/shared/components/Card";
 import { EditConnectionModal } from "@/shared/components";
 import { USAGE_SUPPORTED_PROVIDERS } from "@/shared/constants/providers";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 function getConnectionLabel(connection) {
   const isEmail = (value) =>
@@ -276,8 +277,7 @@ export default function ProviderLimits() {
           params.set("provider", providerFilter);
         }
 
-        const response = await fetch(
-          `/api/providers/client?${params.toString()}`,
+        const response = await apiFetch(`/api/providers/client?${params.toString()}`,
         );
         if (!response.ok) throw new Error("Failed to fetch connections");
 
@@ -313,7 +313,7 @@ export default function ProviderLimits() {
       console.log(
         `[ProviderLimits] Fetching quota for ${provider} (${connectionId})`,
       );
-      const response = await fetch(`/api/usage/${connectionId}`);
+      const response = await apiFetch(`/api/usage/${connectionId}`);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -395,7 +395,7 @@ export default function ProviderLimits() {
       if (!confirm("Delete this connection?")) return;
       setDeletingId(id);
       try {
-        const res = await fetch(`/api/providers/${id}`, { method: "DELETE" });
+        const res = await apiFetch(`/api/providers/${id}`, { method: "DELETE" });
         if (res.ok) {
           setQuotaData((prev) => {
             const next = { ...prev };
@@ -443,7 +443,7 @@ export default function ProviderLimits() {
     async (id, isActive) => {
       setTogglingId(id);
       try {
-        const res = await fetch(`/api/providers/${id}`, {
+        const res = await apiFetch(`/api/providers/${id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive }),
@@ -470,7 +470,7 @@ export default function ProviderLimits() {
       const connectionId = selectedConnection.id;
       const provider = selectedConnection.provider;
       try {
-        const res = await fetch(`/api/providers/${connectionId}`, {
+        const res = await apiFetch(`/api/providers/${connectionId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(formData),
@@ -492,7 +492,7 @@ export default function ProviderLimits() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/proxy-pools?isActive=true", { cache: "no-store" })
+    apiFetch("/api/proxy-pools?isActive=true", { cache: "no-store" })
       .then((res) => res.json())
       .then((data) => {
         if (!cancelled && data?.proxyPools) {
@@ -703,7 +703,7 @@ export default function ProviderLimits() {
       try {
         await Promise.all(
           targetIds.map((id) =>
-            fetch(`/api/providers/${id}`, {
+            apiFetch(`/api/providers/${id}`, {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ isActive }),

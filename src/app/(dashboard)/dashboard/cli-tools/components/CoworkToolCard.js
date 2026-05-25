@@ -5,6 +5,7 @@ import { Card, Button, ManualConfigModal, ComboFormModal, McpMarketplaceModal, M
 import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const ENDPOINT = "/api/cli-tools/cowork-settings";
 
@@ -66,7 +67,7 @@ export default function CoworkToolCard({
 
   useEffect(() => {
     if (!isExpanded) return;
-    fetch("/api/models/alias")
+    apiFetch("/api/models/alias")
       .then((r) => r.ok ? r.json() : null)
       .then((data) => {
         if (data) setModelAliases(data.aliases || {});
@@ -162,7 +163,7 @@ export default function CoworkToolCard({
 
   const handleCreateCombo = async ({ name, models }) => {
     try {
-      const res = await fetch("/api/combos", {
+      const res = await apiFetch("/api/combos", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name, models }),

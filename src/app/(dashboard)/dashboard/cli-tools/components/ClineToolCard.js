@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function ClineToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus, tunnelEnabled, tunnelPublicUrl, tailscaleEnabled, tailscaleUrl }) {
   const [status, setStatus] = useState(initialStatus || null);
@@ -43,7 +44,7 @@ export default function ClineToolCard({ tool, isExpanded, onToggle, baseUrl, api
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
@@ -70,7 +71,7 @@ export default function ClineToolCard({ tool, isExpanded, onToggle, baseUrl, api
   const checkStatus = async () => {
     setChecking(true);
     try {
-      const res = await fetch("/api/cli-tools/cline-settings");
+      const res = await apiFetch("/api/cli-tools/cline-settings");
       const data = await res.json();
       setStatus(data);
     } catch (error) {
@@ -88,7 +89,7 @@ export default function ClineToolCard({ tool, isExpanded, onToggle, baseUrl, api
         ? selectedApiKey
         : (!cloudEnabled ? "sk_9router" : selectedApiKey);
 
-      const res = await fetch("/api/cli-tools/cline-settings", {
+      const res = await apiFetch("/api/cli-tools/cline-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseUrl: getEffectiveBaseUrl(), apiKey: keyToUse, model: selectedModel }),
@@ -111,7 +112,7 @@ export default function ClineToolCard({ tool, isExpanded, onToggle, baseUrl, api
     setRestoring(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cli-tools/cline-settings", { method: "DELETE" });
+      const res = await apiFetch("/api/cli-tools/cline-settings", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings reset successfully!" });

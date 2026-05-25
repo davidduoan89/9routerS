@@ -55,10 +55,12 @@ export async function getDashboardAuthSession(token) {
 
 export async function setDashboardAuthCookie(cookieStore, request, claims = {}) {
   const token = await createDashboardAuthToken(claims);
+  const crossOrigin = !!process.env.ALLOWED_ORIGINS;
+  const secure = crossOrigin || shouldUseSecureCookie(request);
   cookieStore.set("auth_token", token, {
     httpOnly: true,
-    secure: shouldUseSecureCookie(request),
-    sameSite: "lax",
+    secure,
+    sameSite: crossOrigin ? "none" : "lax",
     path: "/",
   });
 }

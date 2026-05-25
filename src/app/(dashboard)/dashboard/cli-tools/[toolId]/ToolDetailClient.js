@@ -11,6 +11,7 @@ import {
   CopilotToolCard, ClineToolCard, KiloToolCard, DeepSeekTuiToolCard,
   JcodeToolCard,
 } from "../components";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
 
@@ -31,10 +32,10 @@ export default function ToolDetailClient({ toolId, machineId }) {
     (async () => {
       try {
         const [provRes, settingsRes, tunnelRes, keysRes] = await Promise.all([
-          fetch("/api/providers"),
-          fetch("/api/settings"),
-          fetch("/api/tunnel/status"),
-          fetch("/api/keys"),
+          apiFetch("/api/providers"),
+          apiFetch("/api/settings"),
+          apiFetch("/api/tunnel/status"),
+          apiFetch("/api/keys"),
         ]);
         if (!mounted) return;
         if (provRes.ok) {

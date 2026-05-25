@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const ENDPOINT = "/api/cli-tools/hermes-settings";
 
@@ -67,7 +68,7 @@ export default function HermesToolCard({
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {

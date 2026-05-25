@@ -13,6 +13,7 @@ import {
   Legend,
 } from "recharts";
 import Card from "@/shared/components/Card";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const fmtTokens = (n) => {
   if (n >= 1000000) return `${(n / 1000000).toFixed(1)}M`;
@@ -30,7 +31,7 @@ export default function UsageChart({ period = "7d" }) {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/usage/chart?period=${period}`);
+      const res = await apiFetch(`/api/usage/chart?period=${period}`);
       if (res.ok) {
         const json = await res.json();
         setData(json);

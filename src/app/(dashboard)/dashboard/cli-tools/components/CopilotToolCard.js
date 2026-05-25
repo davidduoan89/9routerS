@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, apiKeys, activeProviders, cloudEnabled, initialStatus, tunnelEnabled, tunnelPublicUrl, tailscaleEnabled, tailscaleUrl }) {
   const [status, setStatus] = useState(initialStatus || null);
@@ -55,7 +56,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
@@ -68,7 +69,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
       const keyToUse = (selectedApiKey && selectedApiKey.trim())
         ? selectedApiKey
         : (!cloudEnabled ? "sk_9router" : selectedApiKey);
-      await fetch("/api/cli-tools/copilot-settings", {
+      await apiFetch("/api/cli-tools/copilot-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseUrl: getEffectiveBaseUrl(), apiKey: keyToUse, models }),
@@ -99,7 +100,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
   const checkStatus = async () => {
     setChecking(true);
     try {
-      const res = await fetch("/api/cli-tools/copilot-settings");
+      const res = await apiFetch("/api/cli-tools/copilot-settings");
       const data = await res.json();
       setStatus(data);
     } catch (error) {
@@ -117,7 +118,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
         ? selectedApiKey
         : (!cloudEnabled ? "sk_9router" : selectedApiKey);
 
-      const res = await fetch("/api/cli-tools/copilot-settings", {
+      const res = await apiFetch("/api/cli-tools/copilot-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ baseUrl: getEffectiveBaseUrl(), apiKey: keyToUse, models: selectedModels }),
@@ -140,7 +141,7 @@ export default function CopilotToolCard({ tool, isExpanded, onToggle, baseUrl, a
     setRestoring(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cli-tools/copilot-settings", { method: "DELETE" });
+      const res = await apiFetch("/api/cli-tools/copilot-settings", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings reset successfully!" });

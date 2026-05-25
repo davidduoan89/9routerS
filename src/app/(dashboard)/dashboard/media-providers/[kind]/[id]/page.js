@@ -13,6 +13,7 @@ import ModelsCard from "@/app/(dashboard)/dashboard/providers/components/ModelsC
 import { TTS_PROVIDER_CONFIG } from "@/shared/constants/ttsProviders";
 import { getTtsVoicesForModel } from "open-sse/config/ttsModels.js";
 import { GOOGLE_TTS_LANGUAGES } from "open-sse/config/googleTtsLanguages.js";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 // Shared row layout — defined outside components to avoid re-mount on re-render
 function Row({ label, children }) {
@@ -151,11 +152,11 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
 
   useEffect(() => {
     setLocalEndpoint(window.location.origin);
-    fetch("/api/keys")
+    apiFetch("/api/keys")
       .then((r) => r.json())
       .then((d) => { setApiKey((d.keys || []).find((k) => k.isActive !== false)?.key || ""); })
       .catch(() => {});
-    fetch("/api/tunnel/status")
+    apiFetch("/api/tunnel/status")
       .then((r) => r.json())
       .then((d) => { if (d.publicUrl) setTunnelEndpoint(d.publicUrl); })
       .catch(() => {});
@@ -186,7 +187,7 @@ function EmbeddingExampleCard({ providerId, customAlias }) {
     try {
       const headers = { "Content-Type": "application/json" };
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-      const res = await fetch("/api/v1/embeddings", {
+      const res = await apiFetch("/api/v1/embeddings", {
         method: "POST",
         headers,
         body: JSON.stringify(buildBody()),
@@ -414,11 +415,11 @@ function TtsExampleCard({ providerId }) {
 
   useEffect(() => {
     setLocalEndpoint(window.location.origin);
-    fetch("/api/keys")
+    apiFetch("/api/keys")
       .then((r) => r.json())
       .then((d) => { setApiKey((d.keys || []).find((k) => k.isActive !== false)?.key || ""); })
       .catch(() => {});
-    fetch("/api/tunnel/status")
+    apiFetch("/api/tunnel/status")
       .then((r) => r.json())
       .then((d) => { if (d.publicUrl) setTunnelEndpoint(d.publicUrl); })
       .catch(() => {});
@@ -958,16 +959,16 @@ function GenericExampleCard({ providerId, kind }) {
 
   useEffect(() => {
     setLocalEndpoint(window.location.origin);
-    fetch("/api/keys")
+    apiFetch("/api/keys")
       .then((r) => r.json())
       .then((d) => { setApiKey((d.keys || []).find((k) => k.isActive !== false)?.key || ""); })
       .catch(() => {});
-    fetch("/api/tunnel/status")
+    apiFetch("/api/tunnel/status")
       .then((r) => r.json())
       .then((d) => { if (d.publicUrl) setTunnelEndpoint(d.publicUrl); })
       .catch(() => {});
     // Load active connections of this provider for pinning
-    fetch("/api/providers/client")
+    apiFetch("/api/providers/client")
       .then((r) => r.json())
       .then((d) => {
         const conns = (d.connections || []).filter((c) => c.provider === providerId && c.isActive !== false);
@@ -1031,7 +1032,7 @@ function GenericExampleCard({ providerId, kind }) {
       if (pinnedConnectionId) headers["x-connection-id"] = pinnedConnectionId;
       if (useStreaming) headers["Accept"] = "text/event-stream";
       const body = { ...requestBody, model: modelFull };
-      const res = await fetch(`/api${apiPathWithQuery}`, {
+      const res = await apiFetch(`/api${apiPathWithQuery}`, {
         method: kindConfig.endpoint.method,
         headers,
         body: JSON.stringify(body),
@@ -1454,16 +1455,16 @@ function SttExampleCard({ providerId }) {
 
   useEffect(() => {
     setLocalEndpoint(window.location.origin);
-    fetch("/api/keys")
+    apiFetch("/api/keys")
       .then((r) => r.json())
       .then((d) => { setApiKey((d.keys || []).find((k) => k.isActive !== false)?.key || ""); })
       .catch(() => {});
-    fetch("/api/tunnel/status")
+    apiFetch("/api/tunnel/status")
       .then((r) => r.json())
       .then((d) => { if (d.publicUrl) setTunnelEndpoint(d.publicUrl); })
       .catch(() => {});
     const loadCustom = () => {
-      fetch("/api/models/custom", { cache: "no-store" })
+      apiFetch("/api/models/custom", { cache: "no-store" })
         .then((r) => r.json())
         .then((d) => {
           const list = (d.models || []).filter((m) => m.type === "stt" && m.providerAlias === providerAlias);
@@ -1505,7 +1506,7 @@ function SttExampleCard({ providerId }) {
 
       const headers = {};
       if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
-      const res = await fetch("/api/v1/audio/transcriptions", { method: "POST", headers, body: fd });
+      const res = await apiFetch("/api/v1/audio/transcriptions", { method: "POST", headers, body: fd });
       setLatency(Date.now() - start);
       const ct = res.headers.get("content-type") || "";
       const data = ct.includes("application/json") ? await res.json() : await res.text();
@@ -1717,7 +1718,7 @@ export default function MediaProviderDetailPage() {
   const handleDeleteCustom = async () => {
     if (!confirm("Delete this Custom Embedding node?")) return;
     try {
-      const res = await fetch(`/api/provider-nodes/${id}`, { method: "DELETE" });
+      const res = await apiFetch(`/api/provider-nodes/${id}`, { method: "DELETE" });
       if (res.ok) router.push(`/dashboard/media-providers/${kind}`);
     } catch (error) {
       console.log("Error deleting custom embedding node:", error);
@@ -1732,7 +1733,7 @@ export default function MediaProviderDetailPage() {
   useEffect(() => {
     if (!isCustom) return;
     let cancelled = false;
-    fetch("/api/provider-nodes", { cache: "no-store" })
+    apiFetch("/api/provider-nodes", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (cancelled) return;

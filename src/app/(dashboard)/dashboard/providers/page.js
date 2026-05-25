@@ -26,6 +26,7 @@ import { getErrorCode, getRelativeTime } from "@/shared/utils";
 import { useNotificationStore } from "@/store/notificationStore";
 import { useHeaderSearchStore } from "@/store/headerSearchStore";
 import ModelAvailabilityBadge from "./components/ModelAvailabilityBadge";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 function getStatusDisplay(connected, error, errorCode) {
   const parts = [];
@@ -144,8 +145,8 @@ export default function ProvidersPage() {
     const fetchData = async () => {
       try {
         const [connectionsRes, nodesRes] = await Promise.all([
-          fetch("/api/providers"),
-          fetch("/api/provider-nodes"),
+          apiFetch("/api/providers"),
+          apiFetch("/api/provider-nodes"),
         ]);
         const connectionsData = await connectionsRes.json();
         const nodesData = await nodesRes.json();
@@ -218,7 +219,7 @@ export default function ProvidersPage() {
     );
     await Promise.allSettled(
       providerConns.map((c) =>
-        fetch(`/api/providers/${c.id}`, {
+        apiFetch(`/api/providers/${c.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ isActive: newActive }),
@@ -232,7 +233,7 @@ export default function ProvidersPage() {
     setTestingMode(mode === "provider" ? providerId : mode);
     setTestResults(null);
     try {
-      const res = await fetch("/api/providers/test-batch", {
+      const res = await apiFetch("/api/providers/test-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, providerId }),
@@ -660,7 +661,7 @@ function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
       return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/provider-nodes", {
+      const res = await apiFetch("/api/provider-nodes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -693,7 +694,7 @@ function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
   const handleValidate = async () => {
     setValidating(true);
     try {
-      const res = await fetch("/api/provider-nodes/validate", {
+      const res = await apiFetch("/api/provider-nodes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -852,7 +853,7 @@ function AddAnthropicCompatibleModal({ isOpen, onClose, onCreated }) {
       return;
     setSubmitting(true);
     try {
-      const res = await fetch("/api/provider-nodes", {
+      const res = await apiFetch("/api/provider-nodes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -883,7 +884,7 @@ function AddAnthropicCompatibleModal({ isOpen, onClose, onCreated }) {
   const handleValidate = async () => {
     setValidating(true);
     try {
-      const res = await fetch("/api/provider-nodes/validate", {
+      const res = await apiFetch("/api/provider-nodes/validate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

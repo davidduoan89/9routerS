@@ -7,6 +7,7 @@ import Drawer from "@/shared/components/Drawer";
 import Pagination from "@/shared/components/Pagination";
 import { cn } from "@/shared/utils/cn";
 import { AI_PROVIDERS, getProviderByAlias } from "@/shared/constants/providers";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 let providerNameCache = null;
 let providerNodesCache = null;
@@ -16,7 +17,7 @@ async function fetchProviderNames() {
     return { providerNameCache, providerNodesCache };
   }
 
-  const nodesRes = await fetch("/api/provider-nodes");
+  const nodesRes = await apiFetch("/api/provider-nodes");
   const nodesData = await nodesRes.json();
   const nodes = nodesData.nodes || [];
   providerNodesCache = {};
@@ -109,7 +110,7 @@ export default function RequestDetailsTab() {
 
   const fetchProviders = useCallback(async () => {
     try {
-      const res = await fetch("/api/usage/providers");
+      const res = await apiFetch("/api/usage/providers");
       const data = await res.json();
       setProviders(data.providers || []);
 
@@ -131,7 +132,7 @@ export default function RequestDetailsTab() {
       if (filters.startDate) params.append("startDate", filters.startDate);
       if (filters.endDate) params.append("endDate", filters.endDate);
 
-      const res = await fetch(`/api/usage/request-details?${params}`);
+      const res = await apiFetch(`/api/usage/request-details?${params}`);
       const data = await res.json();
 
       setDetails(data.details || []);

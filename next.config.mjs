@@ -16,12 +16,7 @@ const nextConfig = {
   poweredByHeader: false,
   reactStrictMode: false,
   serverExternalPackages: ["better-sqlite3", "sql.js", "node:sqlite", "bun:sqlite"],
-  modularizeImports: {
-    "recharts": {
-      transform: "recharts/es6/{{member}}",
-      skipDefaultConversion: true,
-    },
-  },
+  // recharts is already lazy-loaded via React.lazy(); no modularizeImports needed.
   turbopack: {
     root: tracingRoot
   },

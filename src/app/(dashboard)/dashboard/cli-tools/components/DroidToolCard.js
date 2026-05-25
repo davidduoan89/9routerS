@@ -6,6 +6,7 @@ import Image from "next/image";
 import BaseUrlSelect from "./BaseUrlSelect";
 import ApiKeySelect from "./ApiKeySelect";
 import { matchKnownEndpoint } from "./cliEndpointMatch";
+import { apiFetch } from "@/shared/utils/apiBase";
 
 const CLOUD_URL = process.env.NEXT_PUBLIC_CLOUD_URL;
 
@@ -69,7 +70,7 @@ export default function DroidToolCard({
 
   const fetchModelAliases = async () => {
     try {
-      const res = await fetch("/api/models/alias");
+      const res = await apiFetch("/api/models/alias");
       const data = await res.json();
       if (res.ok) setModelAliases(data.aliases || {});
     } catch (error) {
@@ -100,7 +101,7 @@ export default function DroidToolCard({
   const checkDroidStatus = async () => {
     setCheckingDroid(true);
     try {
-      const res = await fetch("/api/cli-tools/droid-settings");
+      const res = await apiFetch("/api/cli-tools/droid-settings");
       const data = await res.json();
       setDroidStatus(data);
     } catch (error) {
@@ -143,7 +144,7 @@ export default function DroidToolCard({
         || (apiKeys?.length > 0 ? apiKeys[0].key : null)
         || (!cloudEnabled ? "sk_9router" : null);
 
-      const res = await fetch("/api/cli-tools/droid-settings", {
+      const res = await apiFetch("/api/cli-tools/droid-settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -171,7 +172,7 @@ export default function DroidToolCard({
     setRestoring(true);
     setMessage(null);
     try {
-      const res = await fetch("/api/cli-tools/droid-settings", { method: "DELETE" });
+      const res = await apiFetch("/api/cli-tools/droid-settings", { method: "DELETE" });
       const data = await res.json();
       if (res.ok) {
         setMessage({ type: "success", text: "Settings reset successfully!" });

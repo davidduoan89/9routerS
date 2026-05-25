@@ -6,6 +6,35 @@ import { verifyDashboardAuthToken } from "@/lib/auth/dashboardSession";
 const CLI_TOKEN_HEADER = "x-9r-cli-token";
 const CLI_TOKEN_SALT = "9r-cli-auth";
 
+// Cross-origin dashboard UI support.
+// Set ALLOWED_ORIGINS="https://ui.example.com" to allow a remote dashboard.
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim()).filter(Boolean)
+  : [];
+
+function getCorsHeaders(request) {
+  if (!ALLOWED_ORIGINS.length) return null;
+  const origin = request.headers.get("origin");
+  if (!origin) return null;
+  if (ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*")) {
+    return {
+      "Access-Control-Allow-Origin": origin,
+      "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key, x-9r-cli-token, x-connection-id",
+      "Access-Control-Allow-Credentials": "true",
+      "Access-Control-Max-Age": "86400",
+    };
+  }
+  return null;
+}
+
+function withCors(response, request) {
+  const cors = getCorsHeaders(request);
+  if (!cors) return response;
+  for (const [k, v] of Object.entries(cors)) response.headers.set(k, v);
+  return response;
+}
+
 let cachedCliToken = null;
 async function getCliToken() {
   if (!cachedCliToken) cachedCliToken = await getConsistentMachineId(CLI_TOKEN_SALT);
@@ -90,6 +119,12 @@ function isLoopbackHostname(h) {
   return LOOPBACK_HOSTS.has(name);
 }
 
+function isAllowedOrigin(request) {
+  if (!ALLOWED_ORIGINS.length) return false;
+  const origin = request.headers.get("origin");
+  return origin && (ALLOWED_ORIGINS.includes(origin) || ALLOWED_ORIGINS.includes("*"));
+}
+
 function isLocalRequest(request) {
   if (!isLoopbackHostname(request.headers.get("host"))) return false;
   const origin = request.headers.get("origin");
@@ -148,6 +183,7 @@ async function loadSettings() {
 
 async function isAuthenticated(request) {
   if (await hasValidToken(request)) return true;
+  if (isAllowedOrigin(request) && await hasValidToken(request)) return true;
   const settings = await loadSettings();
   if (settings && settings.requireLogin === false) return true;
   return false;
@@ -173,31 +209,37 @@ export const __test__ = {
 export async function proxy(request) {
   const { pathname } = request.nextUrl;
 
+  // CORS preflight for cross-origin dashboard
+  if (request.method === "OPTIONS" && pathname.startsWith("/api/")) {
+    const cors = getCorsHeaders(request);
+    if (cors) return new Response(null, { status: 204, headers: cors });
+  }
+
   // Local-only gate for spawn-capable / host-secret routes.
   if (LOCAL_ONLY_PATHS.some((p) => pathname.startsWith(p))) {
     if (!(await canAccessLocalOnlyRoute(request))) {
-      return NextResponse.json({ error: "Local only: CLI token required" }, { status: 403 });
+      return withCors(NextResponse.json({ error: "Local only: CLI token required" }, { status: 403 }), request);
     }
   }
 
   // Always protected - require valid JWT or local CLI token (machineId-based)
   if (ALWAYS_PROTECTED.some((p) => pathname.startsWith(p))) {
     if (await hasValidCliToken(request) || await hasValidToken(request))
-      return NextResponse.next();
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withCors(NextResponse.next(), request);
+    return withCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
   }
 
   if (isPublicLlmApi(pathname)) {
-    if (await canAccessPublicLlmApi(request)) return NextResponse.next();
-    return NextResponse.json({ error: "API key required for remote API access" }, { status: 401 });
+    if (await canAccessPublicLlmApi(request)) return withCors(NextResponse.next(), request);
+    return withCors(NextResponse.json({ error: "API key required for remote API access" }, { status: 401 }), request);
   }
 
   // Deny-by-default for /api/* — public allow-list bypasses, everything else requires auth.
   if (pathname.startsWith("/api/")) {
-    if (isPublicApi(pathname)) return NextResponse.next();
+    if (isPublicApi(pathname)) return withCors(NextResponse.next(), request);
     if (await hasValidCliToken(request) || await isAuthenticated(request))
-      return NextResponse.next();
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return withCors(NextResponse.next(), request);
+    return withCors(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), request);
   }
 
   // Protect all dashboard routes

@@ -84,6 +84,44 @@ npm run build
 PORT=20128 HOSTNAME=0.0.0.0 npm run start
 ```
 
+### Cách 5: Split Deployment — Server (Coolify/DigitalOcean) + UI (Vercel)
+
+Tách server API và dashboard UI riêng biệt để tối ưu hiệu suất:
+
+**Server (DigitalOcean/Coolify):**
+
+```bash
+# Sử dụng Dockerfile.server
+docker build -f Dockerfile.server -t 9routers-server .
+
+docker run -d \
+  --name 9routers-server \
+  -p 20128:20128 \
+  -e ALLOWED_ORIGINS="https://your-ui.vercel.app" \
+  -e AUTH_COOKIE_SECURE=true \
+  -v 9routers-data:/root/.9router \
+  --restart unless-stopped \
+  9routers-server
+```
+
+**UI (Vercel):**
+
+1. Fork/import repo vào Vercel
+2. Set environment variable:
+   - `NEXT_PUBLIC_API_URL` = `https://your-server.example.com` (URL server API)
+3. Deploy — Vercel tự proxy `/api/*` requests đến server
+
+```
+Server (DigitalOcean)          Vercel (UI)
+├── /v1/* LLM proxy            ├── Dashboard pages
+├── /api/* management    ◄──── ├── fetch() → proxied qua Vercel rewrites
+├── open-sse engine            └── $0 hosting, CDN edge
+├── SQLite DB
+└── ~80MB RAM
+```
+
+> **Lưu ý**: Nếu không set `NEXT_PUBLIC_API_URL`, app chạy như monolith bình thường (backward compatible).
+
 ---
 
 ## Sử Dụng
