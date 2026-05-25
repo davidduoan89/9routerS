@@ -1,0 +1,457 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Icon font is loaded via npm package with webpack processing */
+
+/* ============================================================
+   9Router — WindsurfAPI-inspired Design System
+   Dark-first, indigo accent, clean surfaces
+   ============================================================ */
+
+/* System font stack — same as WindsurfAPI (no web font loading) */
+html {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code, pre, .font-mono {
+  font-family: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+:root {
+  /* Brand scale (light) — indigo accent */
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-primary: var(--color-brand-500);
+  --color-primary-hover: var(--color-brand-400);
+
+  /* Surfaces — light mode */
+  --color-bg: #fafafa;
+  --color-bg-alt: #f4f4f5;
+  --color-surface: #ffffff;
+  --color-surface-2: #f4f4f5;
+  --color-surface-3: #e4e4e7;
+  --color-sidebar: #ffffff;
+
+  /* Borders */
+  --color-border: #e4e4e7;
+  --color-border-subtle: #f4f4f5;
+
+  /* Text */
+  --color-text: #09090b;
+  --color-text-main: #18181b;
+  --color-text-muted: #71717a;
+  --color-text-subtle: #a1a1aa;
+
+  /* Status */
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Accent soft (for badges, highlights) */
+  --color-accent-soft: rgba(99, 102, 241, 0.10);
+  --color-success-soft: rgba(34, 197, 94, 0.10);
+  --color-danger-soft: rgba(239, 68, 68, 0.10);
+  --color-warning-soft: rgba(245, 158, 11, 0.10);
+  --color-info-soft: rgba(59, 130, 246, 0.10);
+
+  /* Radius — matches WindsurfAPI */
+  --radius-brand: 10px;
+  --radius-brand-lg: 14px;
+
+  /* Shadows — minimal */
+  --shadow-soft: none;
+  --shadow-warm: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 4px 12px rgba(0,0,0,0.06);
+  --shadow-elev: 0 1px 3px rgba(0,0,0,0.04);
+  --shadow-focus: 0 0 0 2px rgba(99,102,241,0.15);
+
+  color-scheme: light;
+}
+
+.dark {
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-200: #c7d2fe;
+  --color-brand-300: #a5b4fc;
+  --color-brand-400: #818cf8;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-800: #3730a3;
+  --color-brand-900: #312e81;
+
+  --color-primary: #6366f1;
+  --color-primary-hover: #818cf8;
+
+  /* Surfaces — WindsurfAPI dark palette */
+  --color-bg: #09090b;
+  --color-bg-alt: #0d0d10;
+  --color-surface: #111114;
+  --color-surface-2: #17171c;
+  --color-surface-3: #1c1c22;
+  --color-sidebar: #111114;
+
+  --color-border: #26262e;
+  --color-border-subtle: #1c1c22;
+
+  --color-text: #f4f4f5;
+  --color-text-main: #f4f4f5;
+  --color-text-muted: #a1a1aa;
+  --color-text-subtle: #71717a;
+
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  --color-accent-soft: rgba(99, 102, 241, 0.14);
+  --color-success-soft: rgba(34, 197, 94, 0.14);
+  --color-danger-soft: rgba(239, 68, 68, 0.14);
+  --color-warning-soft: rgba(245, 158, 11, 0.14);
+  --color-info-soft: rgba(59, 130, 246, 0.14);
+
+  --shadow-soft: none;
+  --shadow-warm: 0 1px 3px rgba(0,0,0,0.3);
+  --shadow-elevated: 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-elev: 0 1px 3px rgba(0,0,0,0.2);
+  --shadow-focus: 0 0 0 2px rgba(99, 102, 241, 0.2);
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   Fix native select dropdowns in dark mode
+   ============================================================ */
+select {
+  color-scheme: light;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: var(--color-surface);
+  color: var(--color-text-main);
+}
+
+@theme inline {
+  --color-brand-50: var(--color-brand-50);
+  --color-brand-100: var(--color-brand-100);
+  --color-brand-200: var(--color-brand-200);
+  --color-brand-300: var(--color-brand-300);
+  --color-brand-400: var(--color-brand-400);
+  --color-brand-500: var(--color-brand-500);
+  --color-brand-600: var(--color-brand-600);
+  --color-brand-700: var(--color-brand-700);
+  --color-brand-800: var(--color-brand-800);
+  --color-brand-900: var(--color-brand-900);
+
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+
+  --color-bg: var(--color-bg);
+  --color-bg-alt: var(--color-bg-alt);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-surface-3: var(--color-surface-3);
+  --color-sidebar: var(--color-sidebar);
+  --color-border: var(--color-border);
+  --color-border-subtle: var(--color-border-subtle);
+  --color-text: var(--color-text);
+  --color-text-main: var(--color-text-main);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-subtle: var(--color-text-subtle);
+  --color-accent: var(--color-brand-500);
+  --color-danger: var(--color-danger);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-info: var(--color-info);
+
+  --color-accent-soft: var(--color-accent-soft);
+  --color-success-soft: var(--color-success-soft);
+  --color-danger-soft: var(--color-danger-soft);
+  --color-warning-soft: var(--color-warning-soft);
+  --color-info-soft: var(--color-info-soft);
+
+  --color-bg-light: #fafafa;
+  --color-bg-dark: #09090b;
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #111114;
+  --color-sidebar-light: #ffffff;
+  --color-sidebar-dark: #111114;
+  --color-border-light: #e4e4e7;
+  --color-border-dark: #26262e;
+  --color-text-main-light: #18181b;
+  --color-text-main-dark: #f4f4f5;
+  --color-text-muted-light: #71717a;
+  --color-text-muted-dark: #a1a1aa;
+
+  --radius-brand: var(--radius-brand);
+  --radius-brand-lg: var(--radius-brand-lg);
+
+  --shadow-soft: var(--shadow-soft);
+  --shadow-warm: var(--shadow-warm);
+  --shadow-elevated: var(--shadow-elevated);
+  --shadow-elev: var(--shadow-elev);
+  --shadow-focus: var(--shadow-focus);
+
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+}
+
+/* Base */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text-main);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(99, 102, 241, 0.2);
+}
+.dark ::selection {
+  background-color: rgba(99, 102, 241, 0.25);
+}
+
+input, textarea {
+  accent-color: var(--color-primary);
+}
+
+/* Scrollbar — WindsurfAPI style */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 5px; border: 2px solid var(--color-bg); }
+::-webkit-scrollbar-thumb:hover { background: var(--color-border); }
+
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--color-surface-3); border-radius: 3px; border: none; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background: var(--color-border); }
+
+/* Thin horizontal scrollbar */
+.scroll-thin-x {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+.dark .scroll-thin-x {
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.scroll-thin-x::-webkit-scrollbar { height: 3px; }
+.scroll-thin-x::-webkit-scrollbar-track { background: transparent; }
+.scroll-thin-x::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+.dark .scroll-thin-x::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Reusable card styles */
+.card-soft {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-brand-lg);
+}
+.card-elev {
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-elev);
+  border-radius: var(--radius-brand-lg);
+}
+
+/* Hero gradient */
+.bg-hero-gradient {
+  background: linear-gradient(180deg, var(--color-bg-alt) 0%, var(--color-bg) 100%);
+}
+
+/* Sidebar background (no vibrancy/blur — clean flat) */
+.bg-vibrancy {
+  background: var(--color-sidebar);
+}
+
+/* Traffic lights — kept for compat but can be hidden */
+.traffic-lights {
+  display: flex;
+  gap: 8px;
+}
+.traffic-light {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.traffic-light.red { background: #FF5F56; }
+.traffic-light.yellow { background: #FFBD2E; }
+.traffic-light.green { background: #27C93F; }
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined', sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  font-feature-settings: 'liga';
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+.material-symbols-outlined.fill-1 {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+button {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* ============================================================
+   Animations — reduced motion, subtle
+   ============================================================ */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.animate-spin { animation: spin 1s linear infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.animate-pulse { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.fade-in { animation: fadeIn 0.15s ease-out forwards; }
+
+@keyframes slideInFromTop {
+  from { transform: translateY(-8px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.slide-in-top { animation: slideInFromTop 0.15s ease-out forwards; }
+
+@keyframes slideInFromRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+.slide-in-right { animation: slideInFromRight 0.2s ease-out forwards; }
+
+/* Minimal CTA — no flashy animations */
+.animate-border-glow { }
+.animate-pulse-glow { }
+.btn-cta { position: relative; overflow: hidden; }
+.btn-cta > * { position: relative; z-index: 2; }
+
+/* Dot grid — disabled for minimal style */
+.dot-grid-bg {
+  background-color: var(--color-bg);
+}
+
+/* Landing grid — removed for clean look */
+.landing-grid {
+  display: none;
+}
+
+/* React Flow controls */
+.react-flow-controls-custom {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.react-flow-controls-custom button {
+  background: var(--color-surface);
+  color: var(--color-text-main);
+  border: 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.react-flow-controls-custom button:last-child {
+  border-bottom: 0;
+}
+
+.react-flow-controls-custom button:hover {
+  background: var(--color-surface-2);
+}
+
+/* Changelog markdown body */
+.changelog-body h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1.5rem 0 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+}
+.changelog-body h1:first-child { margin-top: 0; }
+.changelog-body h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: var(--color-text-main);
+}
+.changelog-body h3 {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.4rem;
+}
+.changelog-body ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+.changelog-body li { margin: 0.25rem 0; line-height: 1.6; }
+.changelog-body p { margin: 0.5rem 0; line-height: 1.6; }
+.changelog-body code {
+  background: var(--color-surface-2);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.875em;
+  font-family: ui-monospace, monospace;
+}
+.changelog-body a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+.changelog-body hr {
+  border: none;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5rem 0;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
