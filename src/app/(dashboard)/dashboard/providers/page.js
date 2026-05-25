@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, memo, useCallback } from "react";
+import { useState, useEffect, useMemo, memo, useCallback } from "react";
 import PropTypes from "prop-types";
 import {
   Card,
@@ -94,13 +94,13 @@ function getConnectionErrorTag(connection) {
   return "ERR";
 }
 
-const APIKEY_INITIAL_VISIBLE = 20;
+
 
 export default function ProvidersPage() {
   const [connections, setConnections] = useState([]);
   const [providerNodes, setProviderNodes] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAllApikey, setShowAllApikey] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
   const [showAddCompatibleModal, setShowAddCompatibleModal] = useState(false);
   const [showAddAnthropicCompatibleModal, setShowAddAnthropicCompatibleModal] =
     useState(false);
@@ -252,6 +252,10 @@ export default function ProvidersPage() {
     }
   };
 
+  const toggleSection = useCallback((key) => {
+    setCollapsedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
   const compatibleProviders = providerNodes
     .filter((node) => node.type === "openai-compatible")
     .map((node) => ({
@@ -273,8 +277,11 @@ export default function ProvidersPage() {
     }))
     .filter((p) => matchSearch(p.name));
 
-  const oauthEntries = Object.entries(OAUTH_PROVIDERS).filter(
-    ([, info]) => !info.hidden && matchSearch(info.name),
+  const oauthEntries = sortByPriority(
+    Object.entries(OAUTH_PROVIDERS).filter(
+      ([, info]) => !info.hidden && matchSearch(info.name),
+    ),
+    "oauth",
   );
   const freeEntries = Object.entries(FREE_PROVIDERS).filter(
     ([, info]) => !info.hidden && matchSearch(info.name),
@@ -291,12 +298,28 @@ export default function ProvidersPage() {
     ),
     "apikey",
   );
-  const isApikeySearching = !!searchQuery.trim();
-  const visibleApikeyEntries =
-    isApikeySearching || showAllApikey
-      ? apikeyEntries
-      : apikeyEntries.slice(0, APIKEY_INITIAL_VISIBLE);
-  const hiddenApikeyCount = apikeyEntries.length - APIKEY_INITIAL_VISIBLE;
+
+  // Auto-collapse sections with no active connections (only on initial load)
+  const sectionHasConnections = useMemo(() => {
+    const check = (entries, authType) => entries.some(([k]) => {
+      const s = getProviderStats(k, authType);
+      return s.connected > 0 || s.error > 0;
+    });
+    return {
+      oauth: check(oauthEntries, "oauth"),
+      free: check(freeEntries, "oauth") || check(freeTierEntries, "apikey"),
+      apikey: check(apikeyEntries, "apikey"),
+      custom: [...compatibleProviders, ...anthropicCompatibleProviders].some((p) => {
+        const s = getProviderStats(p.id, "apikey");
+        return s.connected > 0 || s.error > 0;
+      }),
+    };
+  }, [connections, oauthEntries, freeEntries, freeTierEntries, apikeyEntries, compatibleProviders, anthropicCompatibleProviders]);
+
+  const isSectionCollapsed = (key) => {
+    if (collapsedSections[key] !== undefined) return collapsedSections[key];
+    return !sectionHasConnections[key];
+  };
 
   if (loading) {
     return (
@@ -316,7 +339,7 @@ export default function ProvidersPage() {
     anthropicCompatibleProviders.length > 0;
 
   return (
-    <div className="flex min-w-0 flex-col gap-6 px-1 sm:px-0">
+    <div className="flex min-w-0 flex-col gap-3 px-1 sm:px-0">
       {!hasAnyResult && (
         <div className="text-center py-8 border border-dashed border-border rounded-lg">
           <span className="material-symbols-outlined text-[32px] text-text-muted mb-2">
@@ -326,223 +349,136 @@ export default function ProvidersPage() {
         </div>
       )}
 
-      {/* Custom Providers (OpenAI/Anthropic Compatible) — dynamic */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg sm:text-base font-semibold flex items-center gap-2 leading-tight">
-            Custom Providers (OpenAI/Anthropic Compatible){" "}
-          </h2>
-          <div className="grid grid-cols-1 gap-2 sm:flex sm:w-auto">
-            <Button
-              size="sm"
-              icon="add"
-              onClick={() => setShowAddAnthropicCompatibleModal(true)}
-              className="w-full sm:w-auto"
+      {/* Custom Providers */}
+      <CollapsibleSection
+        title="Custom Providers"
+        count={compatibleProviders.length + anthropicCompatibleProviders.length}
+        collapsed={isSectionCollapsed("custom")}
+        onToggle={() => toggleSection("custom")}
+        actions={
+          <div className="flex gap-2">
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowAddAnthropicCompatibleModal(true); }}
+              className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 transition-colors"
             >
-              Add Anthropic Compatible
-            </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              icon="add"
-              onClick={() => setShowAddCompatibleModal(true)}
-              className="w-full !bg-white !text-black hover:!bg-gray-100 sm:w-auto"
+              <span className="material-symbols-outlined text-[14px]">add</span>
+              Anthropic
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowAddCompatibleModal(true); }}
+              className="flex items-center gap-1 text-xs text-text-muted hover:text-text-main transition-colors"
             >
-              Add OpenAI Compatible
-            </Button>
+              <span className="material-symbols-outlined text-[14px]">add</span>
+              OpenAI
+            </button>
           </div>
-        </div>
-        {compatibleProviders.length === 0 &&
-        anthropicCompatibleProviders.length === 0 ? (
-          <div className="flex items-center justify-center gap-2 py-2 border border-dashed border-border rounded-lg text-text-muted text-sm">
-            <span className="material-symbols-outlined text-[18px]">extension</span>
-            <span>No custom providers — use buttons above to add OpenAI/Anthropic compatible endpoints</span>
+        }
+      >
+        {compatibleProviders.length === 0 && anthropicCompatibleProviders.length === 0 ? (
+          <div className="flex items-center justify-center gap-2 py-3 text-text-muted text-xs">
+            <span className="material-symbols-outlined text-[16px]">extension</span>
+            No custom providers yet
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-            {[...compatibleProviders, ...anthropicCompatibleProviders].map(
-              (info) => (
-                <ApiKeyProviderCard
-                  key={info.id}
-                  providerId={info.id}
-                  provider={info}
-                  stats={getProviderStats(info.id, "apikey")}
-                  authType="compatible"
-                  onToggle={(active) =>
-                    handleToggleProvider(info.id, "apikey", active)
-                  }
-                />
-              ),
-            )}
+          <div className="divide-y divide-border">
+            {[...compatibleProviders, ...anthropicCompatibleProviders].map((info) => (
+              <ProviderRow
+                key={info.id}
+                providerId={info.id}
+                name={info.name}
+                stats={getProviderStats(info.id, "apikey")}
+                onToggle={(active) => handleToggleProvider(info.id, "apikey", active)}
+                extra={info.apiType === "responses" ? "Responses" : info.apiType === "chat" ? "Chat" : null}
+              />
+            ))}
           </div>
         )}
-      </div>
+      </CollapsibleSection>
 
       {/* OAuth Providers */}
       {oauthEntries.length > 0 && (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg sm:text-base font-semibold flex items-center gap-2 leading-tight">
-            OAuth Providers
-          </h2>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-            <ModelAvailabilityBadge />
-            <button
-              onClick={() => handleBatchTest("oauth")}
-              disabled={!!testingMode}
-              className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
-                testingMode === "oauth"
-                  ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                  : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-              }`}
-              title="Test all OAuth connections"
-              aria-label="Test all OAuth connections"
-            >
-              <span
-                className={`material-symbols-outlined text-[14px]${testingMode === "oauth" ? " animate-spin" : ""}`}
-              >
-                play_arrow
-              </span>
-              {testingMode === "oauth" ? "Testing..." : "Test All"}
-            </button>
+        <CollapsibleSection
+          title="OAuth Providers"
+          count={oauthEntries.length}
+          collapsed={isSectionCollapsed("oauth")}
+          onToggle={() => toggleSection("oauth")}
+          actions={
+            <div className="flex items-center gap-2">
+              <ModelAvailabilityBadge />
+              <TestAllButton mode="oauth" testingMode={testingMode} onClick={() => handleBatchTest("oauth")} />
+            </div>
+          }
+        >
+          <div className="divide-y divide-border">
+            {oauthEntries.map(([key, info]) => (
+              <ProviderRow
+                key={key}
+                providerId={key}
+                name={info.name}
+                stats={getProviderStats(key, "oauth")}
+                noAuth={!!info.noAuth}
+                onToggle={(active) => handleToggleProvider(key, "oauth", active)}
+              />
+            ))}
           </div>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {oauthEntries.map(([key, info]) => (
-            <ProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "oauth")}
-              authType="oauth"
-              onToggle={(active) => handleToggleProvider(key, "oauth", active)}
-            />
-          ))}
-        </div>
-      </div>
+        </CollapsibleSection>
       )}
 
       {/* Free Tier Providers */}
       {(freeEntries.length > 0 || freeTierEntries.length > 0) && (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg sm:text-base font-semibold flex items-center gap-2 leading-tight">
-            Free Tier Providers
-          </h2>
-          <button
-            onClick={() => handleBatchTest("free")}
-            disabled={!!testingMode}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
-              testingMode === "free"
-                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-            }`}
-            title="Test all Free connections"
-            aria-label="Test all Free provider connections"
-          >
-            <span
-              className={`material-symbols-outlined text-[14px]${testingMode === "free" ? " animate-spin" : ""}`}
-            >
-              play_arrow
-            </span>
-            {testingMode === "free" ? "Testing..." : "Test All"}
-          </button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {freeEntries.map(([key, info]) => (
-            <ProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "oauth")}
-              authType="free"
-              onToggle={(active) => handleToggleProvider(key, "oauth", active)}
-            />
-          ))}
-          {freeTierEntries.map(([key, info]) => (
-            <ApiKeyProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "apikey")}
-              authType="apikey"
-              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
-            />
-          ))}
-        </div>
-      </div>
+        <CollapsibleSection
+          title="Free Tier Providers"
+          count={freeEntries.length + freeTierEntries.length}
+          collapsed={isSectionCollapsed("free")}
+          onToggle={() => toggleSection("free")}
+          actions={<TestAllButton mode="free" testingMode={testingMode} onClick={() => handleBatchTest("free")} />}
+        >
+          <div className="divide-y divide-border">
+            {freeEntries.map(([key, info]) => (
+              <ProviderRow
+                key={key}
+                providerId={key}
+                name={info.name}
+                stats={getProviderStats(key, "oauth")}
+                noAuth={!!info.noAuth}
+                onToggle={(active) => handleToggleProvider(key, "oauth", active)}
+              />
+            ))}
+            {freeTierEntries.map(([key, info]) => (
+              <ProviderRow
+                key={key}
+                providerId={key}
+                name={info.name}
+                stats={getProviderStats(key, "apikey")}
+                onToggle={(active) => handleToggleProvider(key, "apikey", active)}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
 
-      {/* API Key Providers — fixed list */}
+      {/* API Key Providers */}
       {apikeyEntries.length > 0 && (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg sm:text-base font-semibold flex items-center gap-2 leading-tight">
-            API Key Providers{" "}
-          </h2>
-          <button
-            onClick={() => handleBatchTest("apikey")}
-            disabled={!!testingMode}
-            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:w-auto sm:py-1.5 ${
-              testingMode === "apikey"
-                ? "bg-primary/20 border-primary/40 text-primary animate-pulse"
-                : "bg-bg border-border text-text-muted hover:text-text-main hover:border-primary/40"
-            }`}
-            title="Test all API Key connections"
-            aria-label="Test all API Key connections"
-          >
-            <span
-              className={`material-symbols-outlined text-[14px]${testingMode === "apikey" ? " animate-spin" : ""}`}
-            >
-              play_arrow
-            </span>
-            {testingMode === "apikey" ? "Testing..." : "Test All"}
-          </button>
-        </div>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
-          {visibleApikeyEntries.map(([key, info]) => (
-            <ApiKeyProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "apikey")}
-              authType="apikey"
-              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
-            />
-          ))}
-        </div>
-        {!isApikeySearching && !showAllApikey && hiddenApikeyCount > 0 && (
-          <button
-            onClick={() => setShowAllApikey(true)}
-            className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-dashed border-primary/40 px-3 py-2.5 text-sm font-medium text-primary transition-colors hover:border-primary hover:bg-primary/5"
-          >
-            <span className="material-symbols-outlined text-[16px]">expand_more</span>
-            Show all {apikeyEntries.length} providers
-          </button>
-        )}
-      </div>
+        <CollapsibleSection
+          title="API Key Providers"
+          count={apikeyEntries.length}
+          collapsed={isSectionCollapsed("apikey")}
+          onToggle={() => toggleSection("apikey")}
+          actions={<TestAllButton mode="apikey" testingMode={testingMode} onClick={() => handleBatchTest("apikey")} />}
+        >
+          <div className="divide-y divide-border">
+            {apikeyEntries.map(([key, info]) => (
+              <ProviderRow
+                key={key}
+                providerId={key}
+                name={info.name}
+                stats={getProviderStats(key, "apikey")}
+                onToggle={(active) => handleToggleProvider(key, "apikey", active)}
+              />
+            ))}
+          </div>
+        </CollapsibleSection>
       )}
-
-      {/* Web Cookie Providers — use browser subscription cookie instead of API key */}
-      {/* <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold flex items-center gap-2">
-            Web Cookie Providers{" "}
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {Object.entries(WEB_COOKIE_PROVIDERS).map(([key, info]) => (
-            <ApiKeyProviderCard
-              key={key}
-              providerId={key}
-              provider={info}
-              stats={getProviderStats(key, "apikey")}
-              authType="apikey"
-              onToggle={(active) => handleToggleProvider(key, "apikey", active)}
-            />
-          ))}
-        </div>
-      </div> */}
 
       <AddOpenAICompatibleModal
         isOpen={showAddCompatibleModal}
@@ -592,178 +528,105 @@ export default function ProvidersPage() {
   );
 }
 
-const ProviderCard = memo(function ProviderCard({ providerId, provider, stats, authType, onToggle }) {
-  const { connected, error, errorCode, errorTime, allDisabled } = stats;
-  const isNoAuth = !!provider.noAuth;
+/* ── Compact table row for each provider ────────────────────── */
+const ProviderRow = memo(function ProviderRow({ providerId, name, stats, noAuth, onToggle, extra }) {
+  const { connected, error, errorCode, allDisabled, total } = stats;
+
+  const statusEl = allDisabled ? (
+    <span className="text-text-subtle text-xs">Disabled</span>
+  ) : noAuth ? (
+    <span className="text-success text-xs flex items-center gap-1.5">
+      <span className="size-1.5 rounded-full bg-success inline-block" />
+      Ready
+    </span>
+  ) : connected > 0 ? (
+    <span className="text-success text-xs flex items-center gap-1.5">
+      <span className="size-1.5 rounded-full bg-success inline-block" />
+      {connected} connected
+    </span>
+  ) : error > 0 ? (
+    <span className="text-danger text-xs flex items-center gap-1.5">
+      <span className="size-1.5 rounded-full bg-danger inline-block" />
+      {error} error{errorCode ? ` (${errorCode})` : ""}
+    </span>
+  ) : (
+    <span className="text-text-subtle text-xs">—</span>
+  );
 
   return (
-    <Link href={`/dashboard/providers/${providerId}`} className="group min-w-0">
-      <Card
-        padding="xs"
-        className={`h-full transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
-        hover
-      >
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-[13px] font-semibold text-text-main">{provider.name}</h3>
-            <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap mt-0.5">
-              {allDisabled ? (
-                <span className="text-text-subtle text-[12px]">Disabled</span>
-              ) : isNoAuth ? (
-                <span className="text-success text-[12px] flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-success inline-block" />
-                  Ready
-                </span>
-              ) : connected > 0 ? (
-                <span className="text-success text-[12px] flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-success inline-block" />
-                  {connected} Connected
-                </span>
-              ) : error > 0 ? (
-                <span className="text-danger text-[12px] flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-danger inline-block" />
-                  {error} Error
-                </span>
-              ) : (
-                <span className="text-text-subtle text-[12px]">No connections</span>
-              )}
-            </div>
+    <Link
+      href={`/dashboard/providers/${providerId}`}
+      className={`group flex items-center gap-3 px-3 py-2 hover:bg-surface-2 transition-colors ${allDisabled ? "opacity-40" : ""}`}
+    >
+      <span className="text-[13px] font-medium text-text-main truncate min-w-[120px] flex-[2]">
+        {name}
+      </span>
+      <span className="flex-[1.5] min-w-[100px]">{statusEl}</span>
+      {extra && (
+        <span className="text-text-subtle text-[11px] hidden sm:block flex-[0.5]">{extra}</span>
+      )}
+      <div className="flex shrink-0 items-center gap-2 ml-auto">
+        {total > 0 && (
+          <div
+            className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onToggle(!allDisabled); }}
+          >
+            <Toggle size="sm" checked={!allDisabled} onChange={() => {}} />
           </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {stats.total > 0 && (
-              <div
-                className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onToggle(!allDisabled ? false : true);
-                }}
-              >
-                <Toggle
-                  size="sm"
-                  checked={!allDisabled}
-                  onChange={() => {}}
-                  title={allDisabled ? "Enable provider" : "Disable provider"}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-      </Card>
+        )}
+        <span className="material-symbols-outlined text-[16px] text-text-subtle opacity-0 group-hover:opacity-100 transition-opacity">
+          chevron_right
+        </span>
+      </div>
     </Link>
   );
 });
 
-ProviderCard.propTypes = {
-  providerId: PropTypes.string.isRequired,
-  provider: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    textIcon: PropTypes.string,
-  }).isRequired,
-  stats: PropTypes.shape({
-    connected: PropTypes.number,
-    error: PropTypes.number,
-    errorCode: PropTypes.string,
-    errorTime: PropTypes.string,
-  }).isRequired,
-  authType: PropTypes.string,
-  onToggle: PropTypes.func,
-};
-
-const ApiKeyProviderCard = memo(function ApiKeyProviderCard({
-  providerId,
-  provider,
-  stats,
-  authType,
-  onToggle,
-}) {
-  const { connected, error, errorCode, errorTime, allDisabled } = stats;
-  const isCompatible = providerId.startsWith(OPENAI_COMPATIBLE_PREFIX);
-  const isAnthropicCompatible = providerId.startsWith(
-    ANTHROPIC_COMPATIBLE_PREFIX,
-  );
-
+/* ── Collapsible section wrapper ────────────────────────────── */
+function CollapsibleSection({ title, count, collapsed, onToggle, actions, children }) {
   return (
-    <Link href={`/dashboard/providers/${providerId}`} className="group min-w-0">
-      <Card
-        padding="xs"
-        className={`h-full transition-colors cursor-pointer ${allDisabled ? "opacity-50" : ""}`}
-        hover
+    <div className="border border-border rounded-lg overflow-hidden bg-surface">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
+        className="flex items-center gap-2 w-full px-3 py-2.5 text-left hover:bg-surface-2 transition-colors cursor-pointer select-none"
       >
-        <div className="flex min-w-0 items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-[13px] font-semibold text-text-main">{provider.name}</h3>
-            <div className="flex min-w-0 items-center gap-1.5 text-xs flex-wrap mt-0.5">
-              {allDisabled ? (
-                <span className="text-text-subtle text-[12px]">Disabled</span>
-              ) : connected > 0 ? (
-                <span className="text-success text-[12px] flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-success inline-block" />
-                  {connected} Connected
-                </span>
-              ) : error > 0 ? (
-                <span className="text-danger text-[12px] flex items-center gap-1">
-                  <span className="size-1.5 rounded-full bg-danger inline-block" />
-                  {error} Error
-                </span>
-              ) : (
-                <span className="text-text-subtle text-[12px]">No connections</span>
-              )}
-              {isCompatible && (
-                <span className="text-text-subtle text-[11px]">
-                  · {provider.apiType === "responses" ? "Responses" : "Chat"}
-                </span>
-              )}
-              {isAnthropicCompatible && (
-                <span className="text-text-subtle text-[11px]">· Messages</span>
-              )}
-            </div>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            {stats.total > 0 && (
-              <div
-                className="opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  onToggle(!allDisabled ? false : true);
-                }}
-              >
-                <Toggle
-                  size="sm"
-                  checked={!allDisabled}
-                  onChange={() => {}}
-                  title={allDisabled ? "Enable provider" : "Disable provider"}
-                />
-              </div>
-            )}
-          </div>
+        <span className={`material-symbols-outlined text-[16px] text-text-muted transition-transform ${collapsed ? "" : "rotate-90"}`}>
+          chevron_right
+        </span>
+        <span className="text-[13px] font-semibold text-text-main">{title}</span>
+        <span className="text-[11px] text-text-subtle font-medium">{count}</span>
+        <div className="ml-auto flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {actions}
         </div>
-      </Card>
-    </Link>
+      </div>
+      {!collapsed && <div className="border-t border-border">{children}</div>}
+    </div>
   );
-});
+}
 
-ApiKeyProviderCard.propTypes = {
-  providerId: PropTypes.string.isRequired,
-  provider: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    color: PropTypes.string,
-    textIcon: PropTypes.string,
-    apiType: PropTypes.string,
-  }).isRequired,
-  stats: PropTypes.shape({
-    connected: PropTypes.number,
-    error: PropTypes.number,
-    errorCode: PropTypes.string,
-    errorTime: PropTypes.string,
-  }).isRequired,
-  authType: PropTypes.string,
-  onToggle: PropTypes.func,
-};
+/* ── Test All inline button ─────────────────────────────────── */
+function TestAllButton({ mode, testingMode, onClick }) {
+  const active = testingMode === mode;
+  return (
+    <button
+      onClick={onClick}
+      disabled={!!testingMode}
+      className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded transition-colors ${
+        active
+          ? "text-primary animate-pulse"
+          : "text-text-muted hover:text-text-main"
+      }`}
+    >
+      <span className={`material-symbols-outlined text-[14px]${active ? " animate-spin" : ""}`}>
+        play_arrow
+      </span>
+      {active ? "Testing..." : "Test All"}
+    </button>
+  );
+}
 
 function AddOpenAICompatibleModal({ isOpen, onClose, onCreated }) {
   const [formData, setFormData] = useState({
