@@ -6,12 +6,13 @@ set -euo pipefail
 #   Full (server + UI):  curl -fsSL .../install.sh | bash
 #   Server only:         curl -fsSL .../install.sh | bash -s -- --server
 #   UI only (Vercel):    curl -fsSL .../install.sh | bash -s -- --ui
+#   Docker (pre-built):  curl -fsSL .../install.sh | bash -s -- --docker
 
 REPO="https://github.com/davidduoan89/9routerS.git"
 BRANCH="clean-main"
 DIR="9routerS"
 PORT="${PORT:-20128}"
-MODE="full"  # full | server | ui
+MODE="full"  # full | server | ui | docker
 
 # Parse args
 for arg in "$@"; do
@@ -19,6 +20,7 @@ for arg in "$@"; do
     --server) MODE="server" ;;
     --ui)     MODE="ui" ;;
     --full)   MODE="full" ;;
+    --docker) MODE="docker" ;;
     *)        ;;
   esac
 done
@@ -42,6 +44,56 @@ echo -e "${CYAN}╚════════════════════�
 echo ""
 info "Mode: ${MODE}"
 echo ""
+
+# ─── Docker mode (no Node.js needed) ──────────────
+if [ "$MODE" = "docker" ]; then
+  if ! command -v docker &>/dev/null; then
+    fail "Docker not found. Install Docker first: https://docs.docker.com/engine/install/"
+  fi
+  ok "Docker $(docker --version | awk '{print $3}' | tr -d ',')"
+
+  IMAGE="ghcr.io/davidduoan89/9routers:latest"
+  info "Pulling pre-built image..."
+  docker pull "$IMAGE"
+  ok "Image pulled: $IMAGE"
+
+  # Ask for ALLOWED_ORIGINS
+  ORIGINS=""
+  read -p "  UI origin for CORS (e.g. https://your-ui.vercel.app, leave empty to skip): " ORIGINS
+
+  ENV_ARGS="-e PORT=$PORT"
+  [ -n "$ORIGINS" ] && ENV_ARGS="$ENV_ARGS -e ALLOWED_ORIGINS=$ORIGINS -e AUTH_COOKIE_SECURE=true"
+
+  info "Starting container..."
+  docker run -d \
+    --name 9routers \
+    -p "$PORT:$PORT" \
+    $ENV_ARGS \
+    -v 9router-data:/app/data \
+    --restart unless-stopped \
+    "$IMAGE"
+
+  echo ""
+  echo -e "${GREEN}╔══════════════════════════════════════════╗${NC}"
+  echo -e "${GREEN}║        Docker Deploy Complete!           ║${NC}"
+  echo -e "${GREEN}╚══════════════════════════════════════════╝${NC}"
+  echo ""
+  echo -e "  ${CYAN}API Endpoint:${NC}  http://localhost:$PORT/v1"
+  echo -e "  ${CYAN}Health Check:${NC}  http://localhost:$PORT/api/health"
+  echo -e "  ${CYAN}Dashboard:${NC}     http://localhost:$PORT"
+  echo -e "  ${CYAN}Password:${NC}      123456 (change in Settings)"
+  echo ""
+  echo -e "  ${CYAN}Management:${NC}"
+  echo -e "    docker logs -f 9routers      # View logs"
+  echo -e "    docker restart 9routers      # Restart"
+  echo -e "    docker stop 9routers         # Stop"
+  echo -e "    docker pull $IMAGE && docker rm -f 9routers  # Update"
+  echo ""
+  [ -n "$ORIGINS" ] && echo -e "  ${CYAN}CORS Origin:${NC}   $ORIGINS"
+  echo -e "  ${YELLOW}Tip:${NC} Data persisted in Docker volume '9router-data'"
+  echo ""
+  exit 0
+fi
 
 # ─── Check Node.js ────────────────────────────────
 if ! command -v node &>/dev/null; then

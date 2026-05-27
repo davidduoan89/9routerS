@@ -1,29 +1,55 @@
 # syntax=docker/dockerfile:1.7
-# Server-only build for Coolify / DigitalOcean.
-# Dashboard UI excluded — deploy UI separately on Vercel.
+# 9RouterS — Server-only image for Coolify / DigitalOcean.
+# UI excluded — deploy UI separately on Vercel.
+#
+# Build:
+#   docker build -f Dockerfile.server -t 9routers .
+#
+# Run:
+#   docker run -d --name 9routers \
+#     -p 20128:20128 \
+#     -v 9router-data:/app/data \
+#     -e ALLOWED_ORIGINS=https://your-ui.vercel.app \
+#     ghcr.io/davidduoan89/9routers:latest
+#
 # Env vars:
-#   ALLOWED_ORIGINS=https://your-ui.vercel.app  (for cross-origin dashboard)
-#   AUTH_COOKIE_SECURE=true                      (if using HTTPS)
+#   ALLOWED_ORIGINS  — comma-separated UI origins for CORS (e.g. https://ui.vercel.app)
+#   AUTH_COOKIE_SECURE=true — set when using HTTPS
+#   DATA_DIR=/app/data — persistent data directory
+
 ARG NODE_IMAGE=node:22-alpine
-FROM ${NODE_IMAGE} AS base
+
+# ─── Stage 1: Dependencies ───────────────────────────────────────────
+FROM ${NODE_IMAGE} AS deps
 WORKDIR /app
 
-FROM base AS builder
+RUN apk --no-cache add python3 make g++ linux-headers
 
-RUN apk --no-cache upgrade && apk --no-cache add python3 make g++ linux-headers
+COPY package.json package-lock.json* ./
+RUN --mount=type=cache,target=/root/.npm \
+  npm ci --omit=dev 2>/dev/null || npm install --omit=dev
 
-COPY package.json ./
+# ─── Stage 2: Build ──────────────────────────────────────────────────
+FROM ${NODE_IMAGE} AS builder
+WORKDIR /app
+
+RUN apk --no-cache add python3 make g++ linux-headers
+
+COPY package.json package-lock.json* ./
 RUN --mount=type=cache,target=/root/.npm \
   npm install
 
-COPY . ./
+COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
+# ─── Stage 3: Production runner ──────────────────────────────────────
 FROM ${NODE_IMAGE} AS runner
 WORKDIR /app
 
-LABEL org.opencontainers.image.title="9router-server"
+LABEL org.opencontainers.image.title="9routers"
+LABEL org.opencontainers.image.description="9Router Server — AI multi-provider router"
+LABEL org.opencontainers.image.source="https://github.com/davidduoan89/9routerS"
 
 ENV NODE_ENV=production
 ENV PORT=20128
@@ -31,23 +57,34 @@ ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV DATA_DIR=/app/data
 
+# Copy standalone Next.js output
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/.next/standalone ./
+
+# Copy engine components not included in standalone trace
 COPY --from=builder /app/open-sse ./open-sse
 COPY --from=builder /app/src/mitm ./src/mitm
-COPY --from=builder /app/node_modules/node-forge ./node_modules/node-forge
+
+# Runtime deps that standalone tracing may omit
+COPY --from=deps /app/node_modules/node-forge ./node_modules/node-forge
 COPY --from=builder /app/node_modules/next ./node_modules/next
 
-RUN mkdir -p /app/data && chown -R node:node /app && \
-  mkdir -p /app/data-home && chown node:node /app/data-home && \
-  ln -sf /app/data-home /root/.9router 2>/dev/null || true
-
-RUN apk --no-cache upgrade && apk --no-cache add su-exec && \
+# Create data dirs + entrypoint
+RUN apk --no-cache add su-exec && \
+  mkdir -p /app/data /app/data-home && \
+  chown -R node:node /app /app/data /app/data-home && \
+  ln -sf /app/data-home /home/node/.9router && \
   printf '#!/bin/sh\nchown -R node:node /app/data /app/data-home 2>/dev/null\nexec su-exec node "$@"\n' > /entrypoint.sh && \
   chmod +x /entrypoint.sh
 
+# Health check
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q --spider http://localhost:20128/api/health || exit 1
+
 EXPOSE 20128
+
+VOLUME ["/app/data"]
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "server.js"]

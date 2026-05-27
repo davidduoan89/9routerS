@@ -73,12 +73,19 @@ PORT=20128 npm run dev
 ### Cách 3: Docker
 
 ```bash
+# Dùng pre-built image (nhanh nhất, không cần build)
 docker run -d \
   --name 9routers \
   -p 20128:20128 \
-  -v 9routers-data:/root/.9router \
+  -v 9router-data:/app/data \
   --restart unless-stopped \
-  $(docker build -q https://github.com/davidduoan89/9routerS.git#clean-main)
+  ghcr.io/davidduoan89/9routers:latest
+```
+
+Hoặc build từ source:
+```bash
+docker build -f Dockerfile.server -t 9routers https://github.com/davidduoan89/9routerS.git#clean-main
+docker run -d --name 9routers -p 20128:20128 -v 9router-data:/app/data --restart unless-stopped 9routers
 ```
 
 ### Cách 4: Production mode
@@ -111,32 +118,68 @@ Tách server API và dashboard UI thành 2 service riêng biệt:
 
 #### 5a. Server — DigitalOcean + Coolify (Docker)
 
+**Cách 1: Dùng pre-built image từ GitHub (khuyến nghị)**
+
+Image được build tự động bởi GitHub Actions mỗi khi push code, server chỉ cần pull về chạy:
+
 ```bash
-# Build image
-docker build -f Dockerfile.server -t 9routers-server .
+# Pull image từ GitHub Container Registry
+docker pull ghcr.io/davidduoan89/9routers:latest
 
 # Run server
 docker run -d \
-  --name 9routers-server \
+  --name 9routers \
   -p 20128:20128 \
   -e ALLOWED_ORIGINS="https://your-ui.vercel.app" \
   -e AUTH_COOKIE_SECURE=true \
-  -v 9routers-data:/app/data \
+  -v 9router-data:/app/data \
   --restart unless-stopped \
-  9routers-server
+  ghcr.io/davidduoan89/9routers:latest
 ```
 
-Hoặc **không dùng Docker** (trực tiếp trên VPS):
+**Deploy trên Coolify:**
+
+1. Tạo project mới trên Coolify → Add Resource → **Docker Image**
+2. Image: `ghcr.io/davidduoan89/9routers:latest`
+3. Port: `20128`
+4. Environment Variables:
+   - `ALLOWED_ORIGINS=https://your-ui.vercel.app`
+   - `AUTH_COOKIE_SECURE=true`
+5. Persistent Storage: Mount volume vào `/app/data`
+6. Health check: `GET /api/health` (tự động trong image)
+7. Deploy!
+
+**Cách 2: Build image locally**
 
 ```bash
-# Clone + install
-git clone -b clean-main https://github.com/davidduoan89/9routerS.git
-cd 9routerS && npm install
+docker build -f Dockerfile.server -t 9routers .
 
-# Build + run server
-npm run build
+docker run -d \
+  --name 9routers \
+  -p 20128:20128 \
+  -e ALLOWED_ORIGINS="https://your-ui.vercel.app" \
+  -e AUTH_COOKIE_SECURE=true \
+  -v 9router-data:/app/data \
+  --restart unless-stopped \
+  9routers
+```
+
+**Cách 3: Không dùng Docker** (trực tiếp trên VPS)
+
+```bash
+git clone -b clean-main https://github.com/davidduoan89/9routerS.git
+cd 9routerS && npm install && npm run build
 ALLOWED_ORIGINS="https://your-ui.vercel.app" PORT=20128 npm run start
 ```
+
+**GitHub Actions CI/CD:**
+
+Image tự động build + push khi:
+- Push code lên branch `clean-main`
+- Tạo tag `v*` (ví dụ: `v1.0.0`)
+- Chạy thủ công (Actions → Run workflow)
+
+Tags có sẵn: `latest`, `clean-main-<sha>`, `v1.0.0` (nếu dùng semver tag)
 
 **Environment variables cho Server:**
 
