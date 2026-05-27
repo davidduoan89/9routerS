@@ -55,8 +55,8 @@ export async function getDashboardAuthSession(token) {
 
 export async function setDashboardAuthCookie(cookieStore, request, claims = {}) {
   const token = await createDashboardAuthToken(claims);
-  const crossOrigin = !!process.env.ALLOWED_ORIGINS;
-  const secure = crossOrigin || shouldUseSecureCookie(request);
+  const secure = shouldUseSecureCookie(request);
+  const crossOrigin = !!process.env.ALLOWED_ORIGINS && secure;
   cookieStore.set("auth_token", token, {
     httpOnly: true,
     secure,
